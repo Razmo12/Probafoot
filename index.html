@@ -1,0 +1,456 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#faf9f5;color:#141413}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>Probafoot</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@500;600&display=swap">
+<style>
+/* Layout: a single matchday column, like a printed fixture card; each match is a row with a three-way probability bar. */
+:root{
+  --bg:#F2F4F1; --surface:#FFFFFF; --ink:#13201A; --muted:#5A6A61; --line:#D8DFD9;
+  --home:#1F7A4D; --draw:#9AA197; --away:#2F5FA8; --gold:#B57A0C; --gold-bg:#FBF3E2; --lock:rgba(242,244,241,.72);
+  --f-display:"Barlow Condensed","Arial Narrow",Arial,sans-serif;
+  --f-body:"IBM Plex Sans",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --f-num:"IBM Plex Mono",ui-monospace,Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#0E1512; --surface:#16201B; --ink:#E6EDE8; --muted:#93A39A; --line:#27342D;
+  --home:#3FB27A; --draw:#6E786F; --away:#6E98DB; --gold:#E2A83A; --gold-bg:#2A2214; --lock:rgba(22,32,27,.78); color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0E1512; --surface:#16201B; --ink:#E6EDE8; --muted:#93A39A; --line:#27342D;
+  --home:#3FB27A; --draw:#6E786F; --away:#6E98DB; --gold:#E2A83A; --gold-bg:#2A2214; --lock:rgba(22,32,27,.78); color-scheme:dark}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:15px;line-height:1.5}
+.wrap{max-width:760px;margin:0 auto;padding-inline:16px;padding-block:20px 48px;display:flex;flex-direction:column;gap:20px}
+h1,h2,h3{font-family:var(--f-display);font-weight:700;letter-spacing:.01em;text-wrap:balance;margin:0}
+.num{font-family:var(--f-num);font-variant-numeric:tabular-nums}
+.muted{color:var(--muted)}
+.label{font-size:11px;letter-spacing:.09em;text-transform:uppercase;color:var(--muted);font-weight:600}
+
+header.top{display:flex;justify-content:space-between;align-items:flex-end;gap:12px;flex-wrap:wrap;border-bottom:3px solid var(--ink);padding-bottom:12px}
+.brand h1{font-size:44px;line-height:.9;text-transform:uppercase}
+.brand h1 span{color:var(--home)}
+.brand p{margin:6px 0 0;color:var(--muted);font-size:14px}
+.status{display:flex;flex-direction:column;align-items:flex-end;gap:6px}
+.pill{display:inline-flex;align-items:center;gap:6px;border-radius:999px;padding:3px 10px;font-size:12px;font-weight:600;border:1px solid var(--line);background:var(--surface)}
+.pill.premium{background:var(--gold-bg);border-color:var(--gold);color:var(--gold)}
+
+.tabs{display:flex;gap:6px;overflow-x:auto;padding-bottom:2px;scrollbar-width:none}
+.tabs button{flex:0 0 auto;font:600 14px var(--f-body);padding:8px 14px;border-radius:8px;border:1px solid var(--line);background:var(--surface);color:var(--ink);cursor:pointer}
+.tabs button[aria-pressed="true"]{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+button:focus-visible,a:focus-visible,input:focus-visible,summary:focus-visible{outline:2px solid var(--home);outline-offset:2px}
+
+.legend{display:flex;gap:14px;font-size:12px;color:var(--muted);flex-wrap:wrap}
+.legend i{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:5px;vertical-align:-1px}
+
+.day h2{font-size:22px;text-transform:uppercase;margin-bottom:8px;color:var(--muted)}
+.list{display:flex;flex-direction:column;gap:10px}
+.match{background:var(--surface);border:1px solid var(--line);border-radius:10px;overflow:hidden}
+.match > button.head{all:unset;display:grid;grid-template-columns:1fr auto;gap:8px 12px;padding:14px 14px 12px;cursor:pointer;width:100%;box-sizing:border-box}
+.match > button.head:focus-visible{outline:2px solid var(--home);outline-offset:-2px}
+.teams{min-width:0;display:flex;flex-direction:column;gap:2px}
+.team{display:flex;align-items:baseline;gap:8px;font-weight:600;font-size:16px;min-width:0}
+.team .nm{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.team .rk{font-family:var(--f-num);font-size:11px;color:var(--muted);font-weight:500;flex:0 0 auto}
+.meta{text-align:right;display:flex;flex-direction:column;align-items:flex-end;gap:4px}
+.time{font-family:var(--f-num);font-size:13px;color:var(--muted)}
+.conf{font-size:11px;font-weight:600;padding:2px 8px;border-radius:999px;border:1px solid currentColor}
+.conf.hi{color:var(--home)} .conf.mid{color:var(--gold)} .conf.lo{color:var(--muted)}
+.bar{grid-column:1/-1;display:flex;height:26px;border-radius:6px;overflow:hidden;font-family:var(--f-num);font-size:12px;font-weight:600;color:#fff}
+.bar div{display:flex;align-items:center;justify-content:center;min-width:34px}
+.bar .h{background:var(--home)} .bar .d{background:var(--draw)} .bar .a{background:var(--away)}
+.caret{grid-column:1/-1;font-size:12px;color:var(--muted);display:flex;justify-content:space-between}
+
+.detail{border-top:1px solid var(--line);padding:14px;position:relative}
+.detail[hidden]{display:none}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px}
+.stat{border:1px solid var(--line);border-radius:8px;padding:10px 12px;display:flex;flex-direction:column;gap:2px;min-width:0}
+.stat .v{font-family:var(--f-display);font-size:26px;font-weight:700;line-height:1.1}
+.stat .s{font-size:12px;color:var(--muted)}
+.pick{margin-top:10px;border-left:4px solid var(--home);padding:8px 12px;background:var(--bg);border-radius:0 8px 8px 0}
+.pick b{font-family:var(--f-display);font-size:20px}
+.analysis{margin:10px 0 0;font-size:14px;max-width:65ch}
+.matrix{margin-top:12px;overflow-x:auto}
+.matrix table{border-collapse:collapse;font-family:var(--f-num);font-size:12px}
+.matrix td,.matrix th{width:44px;height:30px;text-align:center;border:1px solid var(--line)}
+.matrix th{color:var(--muted);font-weight:500;background:var(--bg)}
+
+.locked .blurme{filter:blur(6px);user-select:none;pointer-events:none}
+.lockcard{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;padding:16px;background:var(--lock)}
+.lockcard div{background:var(--surface);border:1px solid var(--gold);border-radius:10px;padding:14px 16px;max-width:340px;text-align:center;display:flex;flex-direction:column;gap:8px}
+.lockcard b{font-family:var(--f-display);font-size:20px;color:var(--gold)}
+.gift{font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--gold)}
+
+.btn{font:600 15px var(--f-body);border-radius:8px;padding:11px 16px;border:1px solid transparent;cursor:pointer;text-decoration:none;display:inline-flex;justify-content:center;align-items:center;gap:8px}
+.btn.gold{background:var(--gold);color:#fff}
+.btn.ghost{background:transparent;color:var(--ink);border-color:var(--line)}
+.btn[aria-disabled="true"]{opacity:.55;cursor:not-allowed}
+
+.offer{background:var(--gold-bg);border:1px solid var(--gold);border-radius:12px;padding:18px;display:flex;flex-direction:column;gap:12px}
+.offer h2{font-size:28px;text-transform:uppercase;color:var(--gold)}
+.offer ul{margin:0;padding-left:18px;display:flex;flex-direction:column;gap:2px}
+.price{font-family:var(--f-display);font-size:40px;font-weight:700;line-height:1}
+.price small{font-family:var(--f-body);font-size:14px;font-weight:500;color:var(--muted)}
+.row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+.codebox{display:flex;gap:8px;flex-wrap:wrap}
+.codebox input{flex:1 1 180px;min-width:0;font:500 15px var(--f-num);padding:10px 12px;border-radius:8px;border:1px solid var(--line);background:var(--surface);color:var(--ink);text-transform:uppercase}
+.msg{font-size:13px;min-height:1.2em}
+.cbonly{margin:0;font-size:14px;display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.cbtag{font:700 12px var(--f-num);letter-spacing:.05em;border:1.5px solid var(--ink);border-radius:4px;padding:1px 6px}
+.msg.err{color:#C0392B} .msg.ok{color:var(--home)}
+
+.top5{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:16px;position:relative;overflow:hidden}
+.top5 h2{font-size:24px;text-transform:uppercase}
+.top5 ol{margin:10px 0 0;padding:0;list-style:none;display:flex;flex-direction:column;gap:8px}
+.top5 li{display:grid;grid-template-columns:28px 1fr auto;gap:10px;align-items:center;border-top:1px solid var(--line);padding-top:8px}
+.top5 .n{font-family:var(--f-display);font-size:22px;color:var(--muted)}
+.top5 .who{min-width:0}
+.top5 .who b{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.top5 .pct{font-family:var(--f-num);font-weight:600;color:var(--home)}
+
+details.method{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:14px 16px}
+details.method summary{cursor:pointer;font-weight:600}
+details.method p{max-width:65ch;font-size:14px}
+.warn{font-size:13px;color:var(--muted);border-top:1px solid var(--line);padding-top:14px}
+.live,.results{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:16px;display:flex;flex-direction:column;gap:10px}
+.live h2,.results h2{font-size:24px;text-transform:uppercase}
+.livehead{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.dot{width:10px;height:10px;border-radius:50%;background:#C0392B;box-shadow:0 0 0 4px rgba(192,57,43,.18);flex:0 0 auto}
+.lvnote{font-size:13px;color:var(--muted);margin:0}
+.rows{display:flex;flex-direction:column}
+.rrow{display:grid;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);gap:10px;align-items:center;padding:9px 0;border-top:1px solid var(--line);font-size:15px}
+.rrow .hm{text-align:right;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.rrow .aw{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.rrow .sc{font-family:var(--f-num);font-weight:600;background:var(--bg);border:1px solid var(--line);border-radius:6px;padding:2px 10px;min-width:58px;text-align:center}
+.rrow .live-sc{border-color:#C0392B;color:#C0392B}
+.rrow b{font-weight:700}
+.rmeta{grid-column:1/-1;font-size:12px;color:var(--muted);text-align:center;margin-top:-4px}
+.lgname{font-family:var(--f-display);font-size:18px;text-transform:uppercase;color:var(--muted);margin-top:8px}
+@media (prefers-reduced-motion: no-preference){.detail{animation:in .18s ease-out}@keyframes in{from{opacity:.4;transform:translateY(-3px)}to{opacity:1;transform:none}}}
+@media (max-width:420px){.brand h1{font-size:36px}.status{align-items:flex-start}}
+</style>
+
+<div class="wrap">
+  <header class="top">
+    <div class="brand">
+      <h1>Proba<span>foot</span></h1>
+      <p>Probabilités de chaque match de Ligue 1, Ligue 2 et des grands championnats européens.</p>
+    </div>
+    <div class="status">
+      <span class="pill" id="planPill">Version gratuite</span>
+      <span class="label" id="updated"></span>
+    </div>
+  </header>
+
+  <nav class="tabs" id="tabs" aria-label="Championnats"></nav>
+
+  <section class="live" id="live" aria-live="polite"></section>
+
+  <section class="top5" id="top5"></section>
+
+  <div class="legend" aria-hidden="true">
+    <span><i style="background:var(--home)"></i>Victoire domicile</span>
+    <span><i style="background:var(--draw)"></i>Match nul</span>
+    <span><i style="background:var(--away)"></i>Victoire extérieur</span>
+  </div>
+
+  <h2 style="font-size:24px;text-transform:uppercase;margin:0">Pronostics des prochains matchs</h2>
+  <div id="days"></div>
+
+  <section class="results" id="results"></section>
+
+  <section class="offer" id="offer">
+    <h2>Probafoot Premium</h2>
+    <div class="price">5 € <small>une seule fois, sans abonnement</small></div>
+    <p class="cbonly"><span class="cbtag">CB</span> Paiement par <b>carte bancaire uniquement</b> : CB, Visa ou Mastercard. Aucun autre moyen de paiement n'est accepté.</p>
+    <ul>
+      <li>Scores les plus probables et grille complète des scores</li>
+      <li>Buts attendus, plus/moins de 2,5 buts, les deux équipes marquent</li>
+      <li>Conseil du modèle et analyse écrite de chaque match</li>
+      <li>Classement des pronostics les plus sûrs du week-end</li>
+    </ul>
+    <div class="row">
+      <a class="btn gold" id="payBtn" href="#" target="_blank" rel="noopener">Payer 5 € par carte bancaire</a>
+    </div>
+    <p class="muted" id="payNote" style="margin:0;font-size:13px">Paiement sécurisé par Stripe. Après le paiement, votre code d'accès s'affiche sur la page de confirmation.</p>
+    <div>
+      <label class="label" for="code">J'ai déjà payé : mon code</label>
+      <div class="codebox" style="margin-top:6px">
+        <input id="code" autocomplete="off" placeholder="PROBA-XXXXXX">
+        <button class="btn ghost" id="codeBtn" type="button">Valider</button>
+      </div>
+      <div class="msg" id="codeMsg" role="status"></div>
+    </div>
+  </section>
+
+  <details class="method">
+    <summary>Comment sont calculées les probabilités ?</summary>
+    <p>Chaque équipe reçoit une note de force qui combine son niveau habituel et ses points par match cette saison. En début de saison, le niveau habituel pèse davantage ; plus les journées passent, plus la forme actuelle compte.</p>
+    <p>L'écart de force, avec un avantage pour l'équipe qui joue à domicile, donne le nombre de buts attendus de chaque côté. Une loi de Poisson corrigée pour les petits scores (méthode Dixon-Coles) transforme ces buts attendus en probabilité pour chaque score exact, de 0-0 à 8-8. Toutes les autres prédictions en découlent.</p>
+    <p>Une probabilité n'est pas une certitude : un favori à 70 % ne gagne pas 3 fois sur 10. Le modèle ne connaît ni les blessures, ni les suspensions, ni la météo.</p>
+  </details>
+
+  <p class="warn">Probafoot fournit des statistiques à titre informatif et ne garantit aucun résultat. Paiement du Premium par carte bancaire uniquement. Les paris sportifs sont interdits aux mineurs. Jouer comporte des risques : endettement, dépendance… Appelez le 09 74 75 13 13 (Joueurs Info Service, appel non surtaxé).</p>
+</div>
+
+<script id="data" type="application/json">{"updated":"2026-10-03","leagues":[{"id":"l1","name":"Ligue 1","gb":1.35,"teams":{"ASM":{"n":"AS Monaco","r":1,"w":4,"d":1,"l":0,"p":1.85,"last":{"op":"RCL","gf":2,"ga":1,"home":1}},"OL":{"n":"Olympique Lyon","r":2,"w":3,"d":2,"l":0,"p":1.7,"last":{"op":"REN","gf":4,"ga":0,"home":1}},"PAR":{"n":"Paris FC","r":3,"w":3,"d":2,"l":0,"p":1.2,"last":{"op":"RCS","gf":2,"ga":1,"home":1}},"LIL":{"n":"Lille OSC","r":4,"w":3,"d":1,"l":1,"p":1.75,"last":{"op":"NIC","gf":1,"ga":2,"home":0}},"REN":{"n":"Stade Rennais","r":5,"w":3,"d":1,"l":1,"p":1.5,"last":{"op":"OL","gf":0,"ga":4,"home":0}},"PSG":{"n":"Paris Saint-Germain","r":6,"w":2,"d":2,"l":1,"p":2.4,"last":{"op":"OLM","gf":2,"ga":1,"home":0}},"ANG":{"n":"Angers SCO","r":7,"w":2,"d":1,"l":2,"p":1.05,"last":{"op":"EST","gf":2,"ga":0,"home":1}},"RCS":{"n":"RC Strasbourg","r":8,"w":2,"d":1,"l":2,"p":1.5,"last":{"op":"PAR","gf":1,"ga":2,"home":0}},"MAN":{"n":"Le Mans FC","r":9,"w":1,"d":3,"l":1,"p":0.95,"last":{"op":"FCL","gf":2,"ga":1,"home":1}},"AUX":{"n":"AJ Auxerre","r":10,"w":2,"d":0,"l":3,"p":1.15,"last":{"op":"STB","gf":2,"ga":1,"home":1}},"STB":{"n":"Stade Brestois","r":11,"w":1,"d":2,"l":2,"p":1.35,"last":{"op":"AUX","gf":1,"ga":2,"home":0}},"FCL":{"n":"FC Lorient","r":12,"w":1,"d":2,"l":2,"p":1.1,"last":{"op":"MAN","gf":1,"ga":2,"home":0}},"TFC":{"n":"Toulouse FC","r":13,"w":1,"d":2,"l":2,"p":1.3,"last":{"op":"HAC","gf":3,"ga":2,"home":1}},"NIC":{"n":"OGC Nice","r":14,"w":1,"d":2,"l":2,"p":1.6,"last":{"op":"LIL","gf":2,"ga":1,"home":1}},"RCL":{"n":"RC Lens","r":15,"w":1,"d":1,"l":3,"p":1.65,"last":{"op":"ASM","gf":1,"ga":2,"home":0}},"EST":{"n":"ESTAC Troyes","r":16,"w":1,"d":1,"l":3,"p":1.0,"last":{"op":"ANG","gf":0,"ga":2,"home":0}},"OLM":{"n":"Olympique de Marseille","r":17,"w":1,"d":0,"l":4,"p":1.85,"last":{"op":"PSG","gf":1,"ga":2,"home":1}},"HAC":{"n":"Le Havre AC","r":18,"w":0,"d":2,"l":3,"p":1.0,"last":{"op":"TFC","gf":2,"ga":3,"home":0}}},"fx":[{"h":"RCL","a":"OL","t":"2026-10-09T18:45:00Z"},{"h":"LIL","a":"HAC","t":"2026-10-10T15:15:00Z"},{"h":"STB","a":"ANG","t":"2026-10-10T18:45:00Z"},{"h":"FCL","a":"PAR","t":"2026-10-10T18:45:00Z"},{"h":"ASM","a":"TFC","t":"2026-10-10T18:45:00Z"},{"h":"PSG","a":"MAN","t":"2026-10-10T18:45:00Z"},{"h":"NIC","a":"RCS","t":"2026-10-11T13:00:00Z"},{"h":"REN","a":"AUX","t":"2026-10-11T15:15:00Z"},{"h":"EST","a":"OLM","t":"2026-10-11T18:45:00Z"},{"h":"MAN","a":"TFC","t":"2026-10-16T18:45:00Z"}],"res":[{"h":"STB","a":"PSG","t":"2026-09-13T18:45:00Z","gh":0,"ga":1},{"h":"ASM","a":"RCL","t":"2026-09-18T18:45:00Z","gh":2,"ga":1},{"h":"PAR","a":"RCS","t":"2026-09-19T15:15:00Z","gh":2,"ga":1},{"h":"ANG","a":"EST","t":"2026-09-19T18:45:00Z","gh":2,"ga":0},{"h":"MAN","a":"FCL","t":"2026-09-19T18:45:00Z","gh":2,"ga":1},{"h":"OL","a":"REN","t":"2026-09-19T18:45:00Z","gh":4,"ga":0},{"h":"TFC","a":"HAC","t":"2026-09-19T18:45:00Z","gh":3,"ga":2},{"h":"AUX","a":"STB","t":"2026-09-20T13:00:00Z","gh":2,"ga":1},{"h":"NIC","a":"LIL","t":"2026-09-20T15:15:00Z","gh":2,"ga":1},{"h":"OLM","a":"PSG","t":"2026-09-20T18:45:00Z","gh":1,"ga":2}],"lv":[]},{"id":"l2","name":"Ligue 2","gb":1.2,"teams":{"ASSE":{"n":"AS Saint-Étienne","r":1,"w":5,"d":1,"l":1,"p":1.75},"RED":{"n":"Red Star","r":2,"w":4,"d":2,"l":1,"p":1.35},"SDR":{"n":"Stade de Reims","r":3,"w":3,"d":4,"l":0,"p":1.7},"MHSC":{"n":"Montpellier HSC","r":4,"w":3,"d":3,"l":1,"p":1.55},"FCM":{"n":"FC Metz","r":5,"w":2,"d":4,"l":1,"p":1.6},"ASNL":{"n":"AS Nancy","r":6,"w":3,"d":1,"l":3,"p":1.25},"FCA":{"n":"FC Annecy","r":7,"w":3,"d":1,"l":3,"p":1.3},"FCSM":{"n":"FC Sochaux","r":8,"w":2,"d":4,"l":1,"p":1.15},"DFCO":{"n":"Dijon FCO","r":9,"w":2,"d":3,"l":2,"p":1.1},"PAU":{"n":"Pau FC","r":10,"w":2,"d":2,"l":3,"p":1.3},"USLD":{"n":"USL Dunkerque","r":11,"w":2,"d":2,"l":3,"p":1.35},"EAG":{"n":"EA Guingamp","r":12,"w":2,"d":2,"l":3,"p":1.4},"GF38":{"n":"Grenoble Foot 38","r":13,"w":2,"d":2,"l":3,"p":1.25},"RAF":{"n":"Rodez AF","r":14,"w":2,"d":1,"l":4,"p":1.35},"FCN":{"n":"FC Nantes","r":15,"w":2,"d":1,"l":4,"p":1.6},"CF63":{"n":"Clermont Foot","r":16,"w":0,"d":6,"l":1,"p":1.3},"USBCO":{"n":"US Boulogne","r":17,"w":0,"d":5,"l":2,"p":1.05},"SL53":{"n":"Stade Lavallois","r":18,"w":1,"d":2,"l":4,"p":1.2}},"fx":[{"h":"ASNL","a":"EAG","t":"2026-10-09T18:00:00Z"},{"h":"MHSC","a":"GF38","t":"2026-10-09T18:00:00Z"},{"h":"PAU","a":"SL53","t":"2026-10-09T18:00:00Z"},{"h":"USLD","a":"FCA","t":"2026-10-09T18:00:00Z"},{"h":"FCSM","a":"USBCO","t":"2026-10-09T18:00:00Z"},{"h":"CF63","a":"RED","t":"2026-10-10T12:00:00Z"},{"h":"FCN","a":"SDR","t":"2026-10-10T12:00:00Z"},{"h":"ASSE","a":"RAF","t":"2026-10-10T18:00:00Z"},{"h":"DFCO","a":"FCM","t":"2026-10-12T18:45:00Z"}],"res":[],"lv":[]},{"id":"pl","name":"Premier League","gb":1.35,"teams":{"MCI":{"n":"Manchester City","r":1,"w":5,"d":0,"l":0,"p":2.2,"last":{"op":"SUN","gf":5,"ga":3,"home":1}},"ARS":{"n":"Arsenal","r":2,"w":4,"d":0,"l":1,"p":2.25,"last":{"op":"BRI","gf":0,"ga":3,"home":0}},"BRI":{"n":"Brighton","r":3,"w":3,"d":1,"l":1,"p":1.5,"last":{"op":"ARS","gf":3,"ga":0,"home":1}},"BRE":{"n":"Brentford","r":4,"w":2,"d":3,"l":0,"p":1.4,"last":{"op":"CFC","gf":3,"ga":0,"home":1}},"LEE":{"n":"Leeds United","r":5,"w":2,"d":3,"l":0,"p":1.15,"last":{"op":"CRY","gf":0,"ga":0,"home":1}},"LFC":{"n":"Liverpool","r":6,"w":2,"d":3,"l":0,"p":2.15,"last":{"op":"BOU","gf":1,"ga":0,"home":0}},"EVE":{"n":"Everton","r":7,"w":2,"d":3,"l":0,"p":1.3,"last":{"op":"IPS","gf":1,"ga":0,"home":1}},"HUL":{"n":"Hull City","r":8,"w":2,"d":2,"l":1,"p":0.95,"last":{"op":"NEW","gf":1,"ga":2,"home":0}},"NEW":{"n":"Newcastle","r":9,"w":2,"d":2,"l":1,"p":1.75,"last":{"op":"HUL","gf":2,"ga":1,"home":1}},"CFC":{"n":"Chelsea","r":10,"w":2,"d":1,"l":2,"p":1.85,"last":{"op":"BRE","gf":0,"ga":3,"home":0}},"IPS":{"n":"Ipswich Town","r":11,"w":2,"d":0,"l":3,"p":1.0,"last":{"op":"EVE","gf":0,"ga":1,"home":0}},"MUN":{"n":"Manchester United","r":12,"w":1,"d":2,"l":2,"p":1.55,"last":{"op":"FUL","gf":1,"ga":1,"home":0}},"NFO":{"n":"Nottingham Forest","r":13,"w":1,"d":2,"l":2,"p":1.5,"last":{"op":"COV","gf":0,"ga":1,"home":1}},"SUN":{"n":"Sunderland","r":14,"w":1,"d":1,"l":3,"p":1.05,"last":{"op":"MCI","gf":3,"ga":5,"home":0}},"CRY":{"n":"Crystal Palace","r":15,"w":1,"d":1,"l":3,"p":1.4,"last":{"op":"LEE","gf":0,"ga":0,"home":0}},"AVL":{"n":"Aston Villa","r":16,"w":1,"d":1,"l":3,"p":1.7,"last":{"op":"TOT","gf":3,"ga":2,"home":0}},"BOU":{"n":"Bournemouth","r":17,"w":0,"d":3,"l":2,"p":1.4,"last":{"op":"LFC","gf":0,"ga":1,"home":1}},"COV":{"n":"Coventry City","r":18,"w":1,"d":0,"l":4,"p":0.95,"last":{"op":"NFO","gf":1,"ga":0,"home":0}},"FUL":{"n":"Fulham","r":19,"w":0,"d":2,"l":3,"p":1.35,"last":{"op":"MUN","gf":1,"ga":1,"home":1}},"TOT":{"n":"Tottenham","r":20,"w":0,"d":2,"l":3,"p":1.5,"last":{"op":"AVL","gf":2,"ga":3,"home":1}}},"fx":[{"h":"ARS","a":"LEE","t":"2026-10-10T11:30:00Z"},{"h":"AVL","a":"BRE","t":"2026-10-10T14:00:00Z"},{"h":"CFC","a":"BOU","t":"2026-10-10T14:00:00Z"},{"h":"IPS","a":"FUL","t":"2026-10-10T14:00:00Z"},{"h":"SUN","a":"BRI","t":"2026-10-10T14:00:00Z"},{"h":"MUN","a":"TOT","t":"2026-10-10T16:30:00Z"},{"h":"CRY","a":"NFO","t":"2026-10-11T13:00:00Z"},{"h":"HUL","a":"EVE","t":"2026-10-11T13:00:00Z"},{"h":"LFC","a":"MCI","t":"2026-10-11T15:30:00Z"},{"h":"COV","a":"NEW","t":"2026-10-12T19:00:00Z"}],"res":[{"h":"BRE","a":"CFC","t":"2026-09-18T19:00:00Z","gh":3,"ga":0},{"h":"TOT","a":"AVL","t":"2026-09-19T11:30:00Z","gh":2,"ga":3},{"h":"BRI","a":"ARS","t":"2026-09-19T14:00:00Z","gh":3,"ga":0},{"h":"EVE","a":"IPS","t":"2026-09-19T14:00:00Z","gh":1,"ga":0},{"h":"NEW","a":"HUL","t":"2026-09-19T14:00:00Z","gh":2,"ga":1},{"h":"NFO","a":"COV","t":"2026-09-19T16:30:00Z","gh":0,"ga":1},{"h":"BOU","a":"LFC","t":"2026-09-20T13:00:00Z","gh":0,"ga":1},{"h":"LEE","a":"CRY","t":"2026-09-20T13:00:00Z","gh":0,"ga":0},{"h":"MCI","a":"SUN","t":"2026-09-20T13:00:00Z","gh":5,"ga":3},{"h":"FUL","a":"MUN","t":"2026-09-20T15:30:00Z","gh":1,"ga":1}],"lv":[]},{"id":"liga","name":"LaLiga","gb":1.35,"teams":{"BAR":{"n":"FC Barcelone","r":1,"w":7,"d":0,"l":0,"p":2.4,"last":{"op":"SEV","gf":3,"ga":1,"home":0}},"ATM":{"n":"Atlético Madrid","r":2,"w":5,"d":1,"l":1,"p":2.0,"last":{"op":"RMA","gf":2,"ga":1,"home":1}},"RBB":{"n":"Real Betis","r":3,"w":5,"d":1,"l":1,"p":1.6,"last":{"op":"DEP","gf":1,"ga":1,"home":0}},"RMA":{"n":"Real Madrid","r":4,"w":5,"d":0,"l":2,"p":2.35,"last":{"op":"ATM","gf":1,"ga":2,"home":0}},"SEV":{"n":"FC Séville","r":5,"w":4,"d":1,"l":2,"p":1.3,"last":{"op":"BAR","gf":1,"ga":3,"home":1}},"ALA":{"n":"Deportivo Alavés","r":6,"w":3,"d":2,"l":2,"p":1.15,"last":{"op":"ATH","gf":0,"ga":0,"home":0}},"DEP":{"n":"Deportivo La Corogne","r":7,"w":2,"d":4,"l":1,"p":1.05,"last":{"op":"RBB","gf":1,"ga":1,"home":1}},"RSO":{"n":"Real Sociedad","r":8,"w":3,"d":1,"l":3,"p":1.45,"last":{"op":"VCF","gf":3,"ga":2,"home":0}},"VIL":{"n":"Villarreal","r":9,"w":2,"d":2,"l":3,"p":1.75,"last":{"op":"LEV","gf":3,"ga":1,"home":1}},"ATH":{"n":"Athletic Bilbao","r":10,"w":2,"d":2,"l":2,"p":1.7,"last":{"op":"ALA","gf":0,"ga":0,"home":1}},"GET":{"n":"Getafe","r":11,"w":2,"d":2,"l":3,"p":1.2,"last":{"op":"MCF","gf":1,"ga":0,"home":1}},"RVC":{"n":"Rayo Vallecano","r":12,"w":2,"d":2,"l":3,"p":1.3,"last":{"op":"OSA","gf":1,"ga":1,"home":0}},"OSA":{"n":"Osasuna","r":13,"w":2,"d":2,"l":3,"p":1.3,"last":{"op":"RVC","gf":1,"ga":1,"home":1}},"RCC":{"n":"Celta Vigo","r":14,"w":1,"d":4,"l":2,"p":1.45,"last":{"op":"RAC","gf":5,"ga":0,"home":1}},"ESP":{"n":"Espanyol","r":15,"w":2,"d":1,"l":4,"p":1.25,"last":{"op":"ELC","gf":1,"ga":3,"home":1}},"RAC":{"n":"Racing Santander","r":16,"w":2,"d":1,"l":4,"p":1.0,"last":{"op":"RCC","gf":0,"ga":5,"home":0}},"LEV":{"n":"Levante","r":17,"w":1,"d":2,"l":3,"p":1.0,"last":{"op":"VIL","gf":1,"ga":3,"home":0}},"ELC":{"n":"Elche","r":18,"w":1,"d":2,"l":4,"p":1.1,"last":{"op":"ESP","gf":3,"ga":1,"home":0}},"VCF":{"n":"Valence","r":19,"w":1,"d":1,"l":5,"p":1.25,"last":{"op":"RSO","gf":2,"ga":3,"home":1}},"MCF":{"n":"Málaga","r":20,"w":0,"d":3,"l":4,"p":0.95,"last":{"op":"GET","gf":0,"ga":1,"home":0}}},"fx":[{"h":"MCF","a":"ESP","t":"2026-10-09T19:00:00Z"},{"h":"RVC","a":"ATH","t":"2026-10-10T12:00:00Z"},{"h":"ALA","a":"ATM","t":"2026-10-10T14:15:00Z"},{"h":"BAR","a":"GET","t":"2026-10-10T16:30:00Z"},{"h":"RMA","a":"VIL","t":"2026-10-10T19:00:00Z"},{"h":"ELC","a":"RCC","t":"2026-10-11T12:00:00Z"},{"h":"RSO","a":"DEP","t":"2026-10-11T14:15:00Z"},{"h":"RBB","a":"OSA","t":"2026-10-11T16:30:00Z"},{"h":"RAC","a":"VCF","t":"2026-10-11T19:00:00Z"},{"h":"LEV","a":"SEV","t":"2026-10-12T19:00:00Z"}],"res":[{"h":"ESP","a":"ELC","t":"2026-09-18T19:00:00Z","gh":1,"ga":3},{"h":"OSA","a":"RVC","t":"2026-09-19T12:00:00Z","gh":1,"ga":1},{"h":"ATH","a":"ALA","t":"2026-09-19T14:15:00Z","gh":0,"ga":0},{"h":"RCC","a":"RAC","t":"2026-09-19T16:30:00Z","gh":5,"ga":0},{"h":"SEV","a":"BAR","t":"2026-09-19T19:00:00Z","gh":1,"ga":3},{"h":"GET","a":"MCF","t":"2026-09-20T12:00:00Z","gh":1,"ga":0},{"h":"ATM","a":"RMA","t":"2026-09-20T14:15:00Z","gh":2,"ga":1},{"h":"DEP","a":"RBB","t":"2026-09-20T16:30:00Z","gh":1,"ga":1},{"h":"VIL","a":"LEV","t":"2026-09-20T16:30:00Z","gh":3,"ga":1},{"h":"VCF","a":"RSO","t":"2026-09-20T19:00:00Z","gh":2,"ga":3}],"lv":[]},{"id":"sa","name":"Serie A","gb":1.35,"teams":{"ROM":{"n":"AS Rome","r":1,"w":4,"d":1,"l":0,"p":1.85,"last":{"op":"INT","gf":2,"ga":2,"home":1}},"INT":{"n":"Inter Milan","r":2,"w":4,"d":1,"l":0,"p":2.3,"last":{"op":"ROM","gf":2,"ga":2,"home":0}},"LAZ":{"n":"Lazio","r":3,"w":4,"d":1,"l":0,"p":1.65,"last":{"op":"VEN","gf":2,"ga":0,"home":0}},"CAG":{"n":"Cagliari","r":4,"w":4,"d":0,"l":1,"p":1.15,"last":{"op":"UDI","gf":1,"ga":0,"home":0}},"ACM":{"n":"AC Milan","r":5,"w":3,"d":2,"l":0,"p":1.95,"last":{"op":"LEC","gf":3,"ga":0,"home":1}},"FRO":{"n":"Frosinone","r":6,"w":3,"d":1,"l":1,"p":0.95,"last":{"op":"COM","gf":2,"ga":0,"home":1}},"JUV":{"n":"Juventus","r":7,"w":3,"d":1,"l":1,"p":1.95,"last":{"op":"ATA","gf":2,"ga":0,"home":1}},"COM":{"n":"Côme","r":8,"w":3,"d":1,"l":1,"p":1.75,"last":{"op":"FRO","gf":0,"ga":2,"home":0}},"NAP":{"n":"Naples","r":9,"w":2,"d":1,"l":2,"p":2.15,"last":{"op":"FIO","gf":1,"ga":1,"home":0}},"SAS":{"n":"Sassuolo","r":10,"w":2,"d":1,"l":2,"p":1.15,"last":{"op":"MON","gf":1,"ga":2,"home":0}},"ATA":{"n":"Atalanta","r":11,"w":2,"d":0,"l":3,"p":1.85,"last":{"op":"JUV","gf":0,"ga":2,"home":0}},"LEC":{"n":"Lecce","r":12,"w":2,"d":0,"l":3,"p":1.0,"last":{"op":"ACM","gf":0,"ga":3,"home":0}},"UDI":{"n":"Udinese","r":13,"w":1,"d":1,"l":3,"p":1.25,"last":{"op":"CAG","gf":0,"ga":1,"home":1}},"TOR":{"n":"Torino","r":14,"w":1,"d":1,"l":3,"p":1.3,"last":{"op":"BFC","gf":1,"ga":1,"home":0}},"PAR":{"n":"Parme","r":15,"w":1,"d":1,"l":3,"p":1.15,"last":{"op":"GEN","gf":2,"ga":1,"home":1}},"MON":{"n":"Monza","r":16,"w":1,"d":1,"l":3,"p":1.0,"last":{"op":"SAS","gf":2,"ga":1,"home":1}},"FIO":{"n":"Fiorentina","r":17,"w":1,"d":1,"l":3,"p":1.4,"last":{"op":"NAP","gf":1,"ga":1,"home":1}},"BFC":{"n":"Bologne","r":18,"w":0,"d":2,"l":3,"p":1.6,"last":{"op":"TOR","gf":1,"ga":1,"home":1}},"GEN":{"n":"Genoa","r":19,"w":0,"d":1,"l":4,"p":1.2,"last":{"op":"PAR","gf":1,"ga":2,"home":0}},"VEN":{"n":"Venise","r":20,"w":0,"d":0,"l":5,"p":0.95,"last":{"op":"LAZ","gf":0,"ga":2,"home":1}}},"fx":[{"h":"GEN","a":"FIO","t":"2026-10-10T13:00:00Z"},{"h":"INT","a":"PAR","t":"2026-10-10T16:00:00Z"},{"h":"NAP","a":"FRO","t":"2026-10-10T18:45:00Z"},{"h":"COM","a":"ROM","t":"2026-10-11T10:30:00Z"},{"h":"LAZ","a":"MON","t":"2026-10-11T13:00:00Z"},{"h":"LEC","a":"BFC","t":"2026-10-11T13:00:00Z"},{"h":"SAS","a":"ACM","t":"2026-10-11T16:00:00Z"},{"h":"CAG","a":"JUV","t":"2026-10-11T18:45:00Z"},{"h":"ATA","a":"VEN","t":"2026-10-12T16:30:00Z"},{"h":"TOR","a":"UDI","t":"2026-10-12T18:45:00Z"}],"res":[{"h":"MON","a":"SAS","t":"2026-09-18T18:45:00Z","gh":2,"ga":1},{"h":"BFC","a":"TOR","t":"2026-09-19T13:00:00Z","gh":1,"ga":1},{"h":"UDI","a":"CAG","t":"2026-09-19T13:00:00Z","gh":0,"ga":1},{"h":"ROM","a":"INT","t":"2026-09-19T16:00:00Z","gh":2,"ga":2},{"h":"VEN","a":"LAZ","t":"2026-09-19T18:45:00Z","gh":0,"ga":2},{"h":"FIO","a":"NAP","t":"2026-09-20T10:30:00Z","gh":1,"ga":1},{"h":"FRO","a":"COM","t":"2026-09-20T13:00:00Z","gh":2,"ga":0},{"h":"PAR","a":"GEN","t":"2026-09-20T13:00:00Z","gh":2,"ga":1},{"h":"JUV","a":"ATA","t":"2026-09-20T16:00:00Z","gh":2,"ga":0},{"h":"ACM","a":"LEC","t":"2026-09-20T18:45:00Z","gh":3,"ga":0}],"lv":[]},{"id":"bl","name":"Bundesliga","gb":1.35,"teams":{"BVB":{"n":"Borussia Dortmund","r":1,"w":4,"d":0,"l":0,"p":1.95,"last":{"op":"VFB","gf":1,"ga":0,"home":0}},"BMU":{"n":"Bayern Munich","r":2,"w":3,"d":1,"l":0,"p":2.5,"last":{"op":"UNI","gf":7,"ga":0,"home":1}},"SCF":{"n":"SC Fribourg","r":3,"w":3,"d":1,"l":0,"p":1.55,"last":{"op":"SGE","gf":2,"ga":2,"home":0}},"FCA":{"n":"FC Augsbourg","r":4,"w":2,"d":1,"l":1,"p":1.25,"last":{"op":"SVW","gf":2,"ga":3,"home":0}},"LEV":{"n":"Bayer Leverkusen","r":5,"w":2,"d":1,"l":1,"p":1.85,"last":{"op":"RBL","gf":2,"ga":0,"home":1}},"M05":{"n":"Mayence","r":6,"w":2,"d":1,"l":1,"p":1.45,"last":{"op":"BMG","gf":4,"ga":3,"home":0}},"SVE":{"n":"Elversberg","r":7,"w":2,"d":1,"l":1,"p":0.95,"last":{"op":"SCH","gf":0,"ga":0,"home":0}},"SVW":{"n":"Werder Brême","r":8,"w":2,"d":1,"l":1,"p":1.3,"last":{"op":"FCA","gf":3,"ga":2,"home":1}},"RBL":{"n":"RB Leipzig","r":9,"w":2,"d":0,"l":2,"p":1.85,"last":{"op":"LEV","gf":0,"ga":2,"home":0}},"SGE":{"n":"Eintracht Francfort","r":10,"w":1,"d":2,"l":1,"p":1.65,"last":{"op":"SCF","gf":2,"ga":2,"home":1}},"SCH":{"n":"Schalke 04","r":11,"w":1,"d":2,"l":1,"p":1.05,"last":{"op":"SVE","gf":0,"ga":0,"home":1}},"PAD":{"n":"Paderborn","r":12,"w":1,"d":1,"l":2,"p":0.95,"last":{"op":"TSG","gf":3,"ga":1,"home":1}},"KOE":{"n":"FC Cologne","r":13,"w":1,"d":1,"l":2,"p":1.1,"last":{"op":"HSV","gf":1,"ga":2,"home":0}},"TSG":{"n":"Hoffenheim","r":14,"w":1,"d":0,"l":3,"p":1.5,"last":{"op":"PAD","gf":1,"ga":3,"home":0}},"VFB":{"n":"VfB Stuttgart","r":15,"w":1,"d":0,"l":3,"p":1.75,"last":{"op":"BVB","gf":0,"ga":1,"home":1}},"HSV":{"n":"Hambourg SV","r":16,"w":1,"d":0,"l":3,"p":1.1,"last":{"op":"KOE","gf":2,"ga":1,"home":1}},"UNI":{"n":"Union Berlin","r":17,"w":0,"d":1,"l":3,"p":1.25,"last":{"op":"BMU","gf":0,"ga":7,"home":0}},"BMG":{"n":"Borussia M'gladbach","r":18,"w":0,"d":0,"l":4,"p":1.25,"last":{"op":"M05","gf":3,"ga":4,"home":1}}},"fx":[{"h":"BVB","a":"SVW","t":"2026-10-09T18:30:00Z"},{"h":"TSG","a":"HSV","t":"2026-10-10T13:30:00Z"},{"h":"FCA","a":"BMU","t":"2026-10-10T13:30:00Z"},{"h":"M05","a":"LEV","t":"2026-10-10T13:30:00Z"},{"h":"UNI","a":"SVE","t":"2026-10-10T13:30:00Z"},{"h":"PAD","a":"VFB","t":"2026-10-10T13:30:00Z"},{"h":"RBL","a":"SGE","t":"2026-10-10T16:30:00Z"},{"h":"KOE","a":"BMG","t":"2026-10-11T13:30:00Z"},{"h":"SCF","a":"SCH","t":"2026-10-11T15:30:00Z"},{"h":"SGE","a":"KOE","t":"2026-10-16T18:30:00Z"}],"res":[{"h":"SVE","a":"BMU","t":"2026-09-13T15:30:00Z","gh":1,"ga":2},{"h":"BMU","a":"UNI","t":"2026-09-18T18:30:00Z","gh":7,"ga":0},{"h":"SGE","a":"SCF","t":"2026-09-19T13:30:00Z","gh":2,"ga":2},{"h":"BMG","a":"M05","t":"2026-09-19T13:30:00Z","gh":3,"ga":4},{"h":"HSV","a":"KOE","t":"2026-09-19T13:30:00Z","gh":2,"ga":1},{"h":"SVW","a":"FCA","t":"2026-09-19T13:30:00Z","gh":3,"ga":2},{"h":"VFB","a":"BVB","t":"2026-09-19T16:30:00Z","gh":0,"ga":1},{"h":"LEV","a":"RBL","t":"2026-09-20T13:30:00Z","gh":2,"ga":0},{"h":"SCH","a":"SVE","t":"2026-09-20T15:30:00Z","gh":0,"ga":0},{"h":"PAD","a":"TSG","t":"2026-09-20T17:30:00Z","gh":3,"ga":1}],"lv":[]}],"updatedAt":"2026-10-03T21:50:00Z"}</script>
+<script>
+(function(){
+  "use strict";
+  var STRIPE_LINK = "https://buy.stripe.com/aFadR3bKqbdL0vAaDS2wU0c";
+  // Codes Premium acceptés (empreintes SHA-256). Le premier est le code d'origine.
+  var CODE_HASHES = ["6760c1f2f236bd65a9cde3ae319616a23bd7a675115ca26a22ac03275014855d", "1939c769be48f1a9545fe4dafc9096cc8b891d3d1d4e7a42752aa54158c6c7e4"];
+  var DATA = JSON.parse(document.getElementById("data").textContent);
+  var KEY = "probafoot-premium";
+  var premium = false;
+  try { premium = CODE_HASHES.indexOf(localStorage.getItem(KEY)) >= 0; } catch(e) {}
+  var current = "all";
+  var open = {};
+
+  // ---------- model ----------
+  function rating(t){
+    var g = t.w + t.d + t.l; if (!g) return t.p;
+    var ppg = (3*t.w + t.d)/g, wt = g/(g+10);
+    return (1-wt)*t.p + wt*ppg;
+  }
+  function pois(k, l){ var f=1; for (var i=2;i<=k;i++) f*=i; return Math.exp(-l)*Math.pow(l,k)/f; }
+  function model(H, A, gb){
+    gb = gb || 1.35;
+    var diff = rating(H) - rating(A);
+    var lh = gb*1.12*Math.exp(0.55*diff), la = gb*0.89*Math.exp(-0.55*diff);
+    var rho = -0.08, N = 9, m = [], tot = 0;
+    for (var i=0;i<N;i++){ m.push([]); for (var j=0;j<N;j++){
+      var tau = 1;
+      if (i===0&&j===0) tau = 1 - lh*la*rho;
+      else if (i===0&&j===1) tau = 1 + lh*rho;
+      else if (i===1&&j===0) tau = 1 + la*rho;
+      else if (i===1&&j===1) tau = 1 - rho;
+      var p = tau*pois(i,lh)*pois(j,la); m[i].push(p); tot += p; } }
+    var r = {lh:lh, la:la, p1:0, pN:0, p2:0, over:0, btts:0, scores:[], m:m};
+    for (i=0;i<N;i++) for (j=0;j<N;j++){
+      var q = m[i][j]/tot; m[i][j] = q;
+      if (i>j) r.p1+=q; else if (i===j) r.pN+=q; else r.p2+=q;
+      if (i+j>2) r.over+=q; if (i>0&&j>0) r.btts+=q;
+      r.scores.push({s:i+"-"+j, p:q});
+    }
+    r.scores.sort(function(a,b){return b.p-a.p});
+    r.best = Math.max(r.p1, r.pN, r.p2);
+    r.conf = r.best>=0.6 ? "hi" : r.best>=0.45 ? "mid" : "lo";
+    return r;
+  }
+  function pct(x){ return Math.round(x*100) + " %"; }
+  function pick(H, A, r){
+    if (r.p1>=0.5) return {t:"Victoire " + H.n, p:r.p1};
+    if (r.p2>=0.5) return {t:"Victoire " + A.n, p:r.p2};
+    var o = [{t:H.n+" ou nul", p:r.p1+r.pN},{t:A.n+" ou nul", p:r.p2+r.pN},{t:"Pas de match nul", p:r.p1+r.p2}];
+    o.sort(function(a,b){return b.p-a.p}); return o[0];
+  }
+  function pts(t){ return 3*t.w + t.d; }
+  function lastTxt(t, teams){
+    if (!t.last) return "";
+    var L = t.last, op = teams[L.op] ? teams[L.op].n : L.op;
+    var res = L.gf>L.ga ? "victoire" : L.gf===L.ga ? "match nul" : "défaite";
+    return res + " " + L.gf + "-" + L.ga + (L.home ? " contre " : " à ") + op;
+  }
+  function analysis(H, A, r, teams){
+    var s = [];
+    s.push(H.n + " (" + H.r + "e, " + pts(H) + " pts) reçoit " + A.n + " (" + A.r + "e, " + pts(A) + " pts).");
+    var lh = lastTxt(H, teams), la = lastTxt(A, teams);
+    if (lh || la) s.push("Dernier match : " + (lh ? H.n + ", " + lh : "") + (lh && la ? " ; " : "") + (la ? A.n + ", " + la : "") + ".");
+    [H, A].forEach(function(t){
+      var g = t.w+t.d+t.l; if (!g) return; var ppg = (3*t.w+t.d)/g;
+      if (t.p - ppg > 0.6) s.push(t.n + " est en dessous de son niveau habituel cette saison ; le modèle s'attend à un retour progressif vers sa vraie valeur.");
+      else if (ppg - t.p > 0.8) s.push(t.n + " réalise un début de saison au-dessus de son niveau habituel ; le modèle reste prudent sur la durée de cette série.");
+    });
+    s.push("Buts attendus : " + r.lh.toFixed(1).replace(".",",") + " pour " + H.n + ", " + r.la.toFixed(1).replace(".",",") + " pour " + A.n + ".");
+    if (r.over>=0.58) s.push("Match plutôt ouvert : plus de 2,5 buts dans " + pct(r.over) + " des cas.");
+    else if (r.over<=0.45) s.push("Match plutôt fermé : moins de 2,5 buts dans " + pct(1-r.over) + " des cas.");
+    if (r.conf==="lo") s.push("Aucun favori net : c'est un match à risque pour un pronostic.");
+    return s.join(" ");
+  }
+
+  // ---------- build list ----------
+  var all = [];
+  DATA.leagues.forEach(function(L){
+    L.fx.forEach(function(f){
+      var H = L.teams[f.h], A = L.teams[f.a];
+      all.push({L:L, f:f, H:H, A:A, r:model(H, A, L.gb), id:L.id+"-"+f.h+"-"+f.a, t:new Date(f.t)});
+    });
+  });
+  all.sort(function(a,b){return a.t-b.t});
+  var giftId = all.length ? all.slice().sort(function(a,b){return b.r.best-a.r.best})[2].id : null;
+
+  var dayFmt = new Intl.DateTimeFormat("fr-FR",{weekday:"long", day:"numeric", month:"long"});
+  var timeFmt = new Intl.DateTimeFormat("fr-FR",{hour:"2-digit", minute:"2-digit"});
+
+  function el(tag, cls, html){ var e=document.createElement(tag); if(cls) e.className=cls; if(html!=null) e.innerHTML=html; return e; }
+  function esc(s){ return String(s).replace(/[&<>"]/g,function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]}); }
+  var confTxt = {hi:"Confiance élevée", mid:"Confiance moyenne", lo:"Match indécis"};
+
+  function renderTabs(){
+    var tabs = document.getElementById("tabs"); tabs.innerHTML = "";
+    [{id:"all", name:"Tous"}].concat(DATA.leagues).forEach(function(L){
+      var b = el("button", null, esc(L.name)); b.type="button";
+      b.setAttribute("aria-pressed", String(current===L.id));
+      b.onclick = function(){ current = L.id; try{localStorage.setItem("probafoot-tab", current)}catch(e){} render(); };
+      tabs.appendChild(b);
+    });
+  }
+
+  function detailHTML(x){
+    var r = x.r, H = x.H, A = x.A, pk = pick(H, A, r);
+    var top3 = r.scores.slice(0,3).map(function(s){return s.s+" ("+pct(s.p)+")"}).join(" · ");
+    var h = '<div class="blurme"><div class="grid">'
+      + '<div class="stat"><span class="label">Score le plus probable</span><span class="v num">'+r.scores[0].s+'</span><span class="s">'+top3+'</span></div>'
+      + '<div class="stat"><span class="label">Buts attendus</span><span class="v num">'+r.lh.toFixed(1).replace(".",",")+' – '+r.la.toFixed(1).replace(".",",")+'</span><span class="s">'+esc(H.n)+' – '+esc(A.n)+'</span></div>'
+      + '<div class="stat"><span class="label">Plus de 2,5 buts</span><span class="v num">'+pct(r.over)+'</span><span class="s">Moins de 2,5 : '+pct(1-r.over)+'</span></div>'
+      + '<div class="stat"><span class="label">Les deux marquent</span><span class="v num">'+pct(r.btts)+'</span><span class="s">Non : '+pct(1-r.btts)+'</span></div>'
+      + '</div>'
+      + '<div class="pick"><span class="label">Conseil du modèle</span><br><b>'+esc(pk.t)+'</b> <span class="num muted">'+pct(pk.p)+'</span></div>'
+      + '<p class="analysis">'+esc(analysis(H, A, r, x.L.teams))+'</p>'
+      + '<div class="matrix"><span class="label">Probabilité de chaque score (domicile en lignes)</span><table><tr><th></th>';
+    for (var j=0;j<6;j++) h += '<th>'+j+'</th>';
+    h += '</tr>';
+    var mx = r.scores[0].p;
+    for (var i=0;i<6;i++){ h += '<tr><th>'+i+'</th>'; for (j=0;j<6;j++){ var q=r.m[i][j], a=Math.min(1,q/mx);
+      var c = i>j ? "var(--home)" : i===j ? "var(--draw)" : "var(--away)";
+      h += '<td style="background:color-mix(in srgb,'+c+' '+Math.round(a*70)+'%,transparent)">'+Math.round(q*100)+'</td>'; }
+      h += '</tr>'; }
+    h += '</table></div></div>';
+    return h;
+  }
+
+  function matchCard(x){
+    var card = el("article", "match");
+    var r = x.r, unlocked = premium || x.id===giftId;
+    var head = el("button", "head"); head.type = "button"; head.setAttribute("aria-expanded", String(!!open[x.id]));
+    head.innerHTML =
+      '<div class="teams">'
+      + '<div class="team"><span class="nm">'+esc(x.H.n)+'</span><span class="rk">'+x.H.r+'e</span></div>'
+      + '<div class="team"><span class="nm">'+esc(x.A.n)+'</span><span class="rk">'+x.A.r+'e</span></div>'
+      + '</div>'
+      + '<div class="meta"><span class="time">'+timeFmt.format(x.t)+' · '+esc(x.L.name)+'</span>'
+      + '<span class="conf '+r.conf+'">'+confTxt[r.conf]+'</span>'
+      + (x.id===giftId && !premium ? '<span class="gift">Analyse offerte</span>' : '')
+      + '</div>'
+      + '<div class="bar" role="img" aria-label="'+esc(x.H.n)+' '+pct(r.p1)+', nul '+pct(r.pN)+', '+esc(x.A.n)+' '+pct(r.p2)+'">'
+      + '<div class="h" style="flex:'+r.p1+'">'+pct(r.p1)+'</div>'
+      + '<div class="d" style="flex:'+r.pN+'">'+pct(r.pN)+'</div>'
+      + '<div class="a" style="flex:'+r.p2+'">'+pct(r.p2)+'</div></div>'
+      + '<div class="caret"><span>1 · N · 2</span><span>'+(open[x.id] ? "Masquer l'analyse ▲" : "Voir l'analyse ▼")+'</span></div>';
+    head.onclick = function(){ open[x.id] = !open[x.id]; render(); };
+    card.appendChild(head);
+    if (open[x.id]){
+      var d = el("div", "detail" + (unlocked ? "" : " locked"), detailHTML(x));
+      if (!unlocked){
+        var lc = el("div", "lockcard", '<div><b>Analyse Premium</b><span>Scores probables, buts attendus et conseil du modèle.</span><a class="btn gold" href="#offer">Débloquer pour 5 €</a><span class="muted" style="font-size:12px">Carte bancaire uniquement</span></div>');
+        d.appendChild(lc);
+      }
+      card.appendChild(d);
+    }
+    return card;
+  }
+
+  function renderTop5(){
+    var box = document.getElementById("top5");
+    var list = all.slice().sort(function(a,b){
+      return pick(b.H,b.A,b.r).p - pick(a.H,a.A,a.r).p; }).slice(0,5);
+    var h = '<span class="label">Les plus sûrs du week-end</span><h2>Top 5 des pronostics</h2><ol class="'+(premium?"":"blurme")+'">';
+    list.forEach(function(x, i){
+      var pk = pick(x.H, x.A, x.r);
+      h += '<li><span class="n">'+(i+1)+'</span><span class="who"><b>'+esc(pk.t)+'</b><span class="muted" style="font-size:13px">'+esc(x.H.n)+' – '+esc(x.A.n)+' · '+esc(x.L.name)+'</span></span><span class="pct">'+pct(pk.p)+'</span></li>';
+    });
+    h += '</ol>';
+    box.className = "top5" + (premium ? "" : " locked");
+    box.innerHTML = h;
+    if (!premium) box.appendChild(el("div","lockcard",'<div><b>Réservé Premium</b><span>Les 5 pronostics que le modèle juge les plus sûrs, toutes ligues confondues.</span><a class="btn gold" href="#offer">Débloquer pour 5 €</a><span class="muted" style="font-size:12px">Carte bancaire uniquement</span></div>'));
+  }
+
+  function scoreRow(L, m, cls, meta){
+    var H = L.teams[m.h], A = L.teams[m.a];
+    var hw = m.gh>m.ga, aw = m.ga>m.gh;
+    return '<div class="rrow"><span class="hm">'+(hw?'<b>':'')+esc(H?H.n:m.h)+(hw?'</b>':'')+'</span>'
+      + '<span class="sc '+(cls||'')+'">'+m.gh+' - '+m.ga+'</span>'
+      + '<span class="aw">'+(aw?'<b>':'')+esc(A?A.n:m.a)+(aw?'</b>':'')+'</span>'
+      + (meta ? '<span class="rmeta">'+esc(meta)+'</span>' : '') + '</div>';
+  }
+  var shortFmt = new Intl.DateTimeFormat("fr-FR",{weekday:"short", day:"numeric", month:"short"});
+  var updFmt = new Intl.DateTimeFormat("fr-FR",{day:"numeric", month:"long", hour:"2-digit", minute:"2-digit"});
+  function leaguesShown(){ return DATA.leagues.filter(function(L){ return current==="all" || L.id===current; }); }
+  function renderLive(){
+    var box = document.getElementById("live"), h = "", n = 0;
+    var upd = DATA.updatedAt ? updFmt.format(new Date(DATA.updatedAt)) : "";
+    h += '<div class="livehead"><span class="dot" aria-hidden="true"></span><h2>Matchs en direct</h2></div>';
+    leaguesShown().forEach(function(L){
+      (L.lv||[]).forEach(function(m){ n++; h += scoreRow(L, m, "live-sc", L.name + (m.min ? " · " + m.min + "e minute" : " · en cours")); });
+    });
+    if (!n){
+      var next = all.filter(function(x){ return x.t.getTime() > Date.now(); })[0];
+      h += '<p class="lvnote">Aucun match en cours'+(upd ? ' au '+upd : '')+'.'+(next ? ' Prochain coup d\'envoi : '+esc(next.H.n)+' – '+esc(next.A.n)+', '+esc(dayFmt.format(next.t))+' à '+timeFmt.format(next.t)+' ('+esc(next.L.name)+').' : '')+'</p>';
+    } else if (upd){
+      h += '<p class="lvnote">Scores au '+upd+'.</p>';
+    }
+    box.innerHTML = h;
+  }
+  function renderResults(){
+    var box = document.getElementById("results"), h = '<h2>Derniers résultats</h2>', any = false;
+    leaguesShown().forEach(function(L){
+      var r = (L.res||[]).slice().sort(function(a,b){ return new Date(b.t)-new Date(a.t); });
+      if (!r.length) return; any = true;
+      h += '<div class="lgname">'+esc(L.name)+'</div><div class="rows">';
+      r.forEach(function(m){ h += scoreRow(L, m, "", shortFmt.format(new Date(m.t))); });
+      h += '</div>';
+    });
+    if (!any) h += '<p class="lvnote">Pas encore de résultats pour ce championnat.</p>';
+    box.innerHTML = h;
+  }
+
+  function render(){
+    renderTabs(); renderTop5(); renderLive(); renderResults();
+    var wrap = document.getElementById("days"); wrap.innerHTML = "";
+    var list = all.filter(function(x){ return current==="all" || x.L.id===current; });
+    var byDay = {};
+    list.forEach(function(x){ var k = dayFmt.format(x.t); (byDay[k] = byDay[k] || []).push(x); });
+    Object.keys(byDay).forEach(function(k){
+      var sec = el("section","day"); sec.appendChild(el("h2", null, esc(k)));
+      var ul = el("div","list"); byDay[k].forEach(function(x){ ul.appendChild(matchCard(x)); });
+      sec.appendChild(ul); wrap.appendChild(sec);
+    });
+    document.getElementById("planPill").className = "pill" + (premium ? " premium" : "");
+    document.getElementById("planPill").textContent = premium ? "Premium activé" : "Version gratuite";
+    document.getElementById("offer").hidden = premium;
+  }
+
+  // ---------- payment & code ----------
+  var pay = document.getElementById("payBtn");
+  if (/^https:\/\/(buy|checkout)\.stripe\.com\//.test(STRIPE_LINK)) { pay.href = STRIPE_LINK; }
+  else {
+    pay.removeAttribute("href"); pay.setAttribute("aria-disabled","true");
+    pay.textContent = "Paiement bientôt disponible";
+    document.getElementById("payNote").textContent = "Le paiement par carte sera ouvert très prochainement.";
+  }
+  async function sha(s){
+    var b = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(s));
+    return Array.from(new Uint8Array(b)).map(function(x){return x.toString(16).padStart(2,"0")}).join("");
+  }
+  async function tryCode(){
+    var v = document.getElementById("code").value.trim().toUpperCase(), msg = document.getElementById("codeMsg");
+    if (!v){ msg.className="msg err"; msg.textContent="Saisissez le code reçu après le paiement."; return; }
+    var h; try { h = await sha(v); } catch(e){ msg.className="msg err"; msg.textContent="Votre navigateur ne permet pas de vérifier le code ici."; return; }
+    if (CODE_HASHES.indexOf(h) >= 0){
+      premium = true; try{ localStorage.setItem(KEY, h) }catch(e){}
+      msg.className="msg ok"; msg.textContent="Premium activé.";
+      render(); window.scrollTo({top:0, behavior:"smooth"});
+    } else { msg.className="msg err"; msg.textContent="Ce code ne correspond pas. Vérifiez les tirets et les chiffres sur votre page de confirmation."; }
+  }
+  document.getElementById("codeBtn").onclick = tryCode;
+  document.getElementById("code").addEventListener("keydown", function(e){ if (e.key==="Enter") tryCode(); });
+
+  var up = new Date(DATA.updated + "T12:00:00Z");
+  document.getElementById("updated").textContent = "Données au " + new Intl.DateTimeFormat("fr-FR",{day:"numeric",month:"long",year:"numeric"}).format(up);
+  try { var t = localStorage.getItem("probafoot-tab"); if (t) current = t; } catch(e){}
+  if (giftId) open[giftId] = true;
+  render();
+})();
+</script>
+
+</body></html>
